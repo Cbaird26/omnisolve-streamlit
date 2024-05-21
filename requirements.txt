@@ -2,6 +2,6 @@ streamlit
 networkx
 matplotlib
 sympy
-pywt
+PyWavelets
 pandas
 scipy
