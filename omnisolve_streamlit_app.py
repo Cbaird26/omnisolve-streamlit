@@ -118,6 +118,7 @@ def define_modified_gravity():
     return f_R
 
 def modified_einstein_equations(f_R):
+    R = sp.symbols('R')  # Ensure R is defined here
     L = f_R
     field_eq = sp.diff(L, R) - sp.diff(sp.diff(L, sp.diff(R)), R)
     return field_eq
