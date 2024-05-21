@@ -1,201 +1,8 @@
 import streamlit as st
 import numpy as np
-import networkx as nx
 import matplotlib.pyplot as plt
-import sympy as sp
-import pywt
-from scipy.signal import butter, filtfilt
-import pandas as pd
 
-st.set_page_config(page_title="OmniSolve 3.0: The Universal Solution", layout="wide")
-
-# Helper functions for visualizations
-def plot_network(G, title="Spin Network"):
-    pos = nx.spring_layout(G)
-    labels = nx.get_edge_attributes(G, 'spin')
-    fig, ax = plt.subplots(figsize=(10, 6))
-    nx.draw(G, pos, with_labels=True, node_color='lightblue', node_size=500, ax=ax)
-    nx.draw_networkx_edge_labels(G, pos, edge_labels=labels, ax=ax)
-    ax.set_title(title)
-    st.pyplot(fig)
-
-def plot_data(data, labels, title):
-    fig, ax = plt.subplots(figsize=(10, 6))
-    for i, d in enumerate(data):
-        ax.plot(d, label=labels[i])
-    ax.set_xlabel('Time')
-    ax.set_ylabel('Amplitude')
-    ax.set_title(title)
-    ax.legend()
-    st.pyplot(fig)
-
-def plot_3d(data, title="3D Visualization"):
-    from mpl_toolkits.mplot3d import Axes3D
-    fig = plt.figure()
-    ax = fig.add_subplot(111, projection='3d')
-    ax.plot(data[:, 0], data[:, 1], data[:, 2])
-    ax.set_title(title)
-    st.pyplot(fig)
-
-# Quantum Gravity Simulation
-def create_spin_network(num_nodes, initial_spin=1):
-    G = nx.Graph()
-    for i in range(num_nodes):
-        G.add_node(i, spin=initial_spin)
-    for i in range(num_nodes - 1):
-        G.add_edge(i, i + 1, spin=initial_spin)
-    return G
-
-def evolve_spin_network(G, steps):
-    for _ in range(steps):
-        new_node = max(G.nodes) + 1
-        G.add_node(new_node, spin=np.random.randint(1, 4))
-        for node in G.nodes:
-            if node != new_node:
-                G.add_edge(new_node, node, spin=np.random.randint(1, 4))
-    return G
-
-# Gravitational Wave Analysis
-def wavelet_denoise(signal, wavelet='db8', level=1):
-    coeffs = pywt.wavedec(signal, wavelet, level=level)
-    sigma = np.median(np.abs(coeffs[-level])) / 0.6745
-    uthresh = sigma * np.sqrt(2 * np.log(len(signal)))
-    coeffs = [pywt.threshold(c, value=uthresh, mode='soft') for c in coeffs]
-    return pywt.waverec(coeffs, wavelet)
-
-def adaptive_filter(signal, cutoff, fs, order=5):
-    nyquist = 0.5 * fs
-    normal_cutoff = cutoff / nyquist
-    b, a = butter(order, normal_cutoff, btype='low', analog=False)
-    y = filtfilt(b, a, signal)
-    return y
-
-def analyze_gravitational_wave(data):
-    denoised_wavelet = wavelet_denoise(data)
-    denoised_adaptive = adaptive_filter(data, 0.1, 1000)
-    plot_data([data, denoised_wavelet, denoised_adaptive], ['Original Data', 'Wavelet Denoised', 'Adaptive Filtered'], 'Gravitational Wave Data Denoising')
-    return denoised_wavelet, denoised_adaptive
-
-# Extra Dimensions Exploration
-def define_metric():
-    x, y, z, w, v = sp.symbols('x y z w v')
-    g = sp.Matrix([[1, 0, 0, 0, 0],
-                   [0, 1, 0, 0, 0],
-                   [0, 0, 1, 0, 0],
-                   [0, 0, 0, 1, 0],
-                   [0, 0, 0, 0, -1]])
-    return g, (x, y, z, w, v)
-
-def christoffel_symbols(metric, coords):
-    n = len(coords)
-    christoffel = sp.MutableDenseNDimArray.zeros(n, n, n)
-    inv_metric = metric.inv()
-    for i in range(n):
-        for j in range(n):
-            for k in range(n):
-                christoffel[i, j, k] = sp.Rational(1, 2) * sum(
-                    inv_metric[i, m] * (sp.diff(metric[m, j], coords[k]) +
-                                        sp.diff(metric[m, k], coords[j]) -
-                                        sp.diff(metric[j, k], coords[m]))
-                    for m in range(n))
-    return christoffel
-
-def geodesic_equation(christoffel, coords):
-    n = len(coords)
-    geodesic_eq = []
-    t = sp.symbols('t')
-    func = [sp.Function(f"x{i}")(t) for i in range(n)]
-    for i in range(n):
-        eq = sp.diff(func[i], t, t)
-        for j in range(n):
-            for k in range(n):
-                eq += -christoffel[i, j, k] * sp.diff(func[j], t) * sp.diff(func[k], t)
-        geodesic_eq.append(eq)
-    return geodesic_eq
-
-def simulate_extra_dimensions():
-    g, coords = define_metric()
-    christoffel = christoffel_symbols(g, coords)
-    geodesic_eq = geodesic_equation(christoffel, coords)
-    return geodesic_eq
-
-# Modified Gravity Theories
-def define_modified_gravity():
-    R = sp.symbols('R')
-    f_R = R**2 + sp.exp(R)
-    return f_R
-
-def modified_einstein_equations(f_R):
-    R = sp.symbols('R')
-    L = f_R
-    dL_dR = sp.diff(L, R)
-    d2L_dR2 = sp.diff(L, R, R)
-    field_eq = dL_dR - sp.diff(d2L_dR2, R)
-    return field_eq
-
-def simulate_modified_gravity():
-    f_R = define_modified_gravity()
-    field_eq = modified_einstein_equations(f_R)
-    st.write(f"Modified Field Equations: {field_eq}")
-    return field_eq
-
-# Dark Matter Simulation
-def dark_matter_density_profile(radius, rho_0, r_s):
-    return rho_0 / ((radius / r_s) * (1 + radius / r_s)**2)
-
-def simulate_dark_matter_distribution(radius_range, rho_0, r_s):
-    if radius_range > 100:
-        st.error("Radius range too large! Please enter a value less than 100.")
-        return
-
-    radii = np.linspace(0.1, radius_range, 100)
-    densities = dark_matter_density_profile(radii, rho_0, r_s)
-    fig, ax = plt.subplots(figsize=(10, 6))
-    ax.plot(radii, densities)
-    ax.set_xlabel('Radius')
-    ax.set_ylabel('Density')
-    ax.set_title('Dark Matter Density Profile')
-    st.pyplot(fig)
-
-# Black Hole Lensing
-def black_hole_lensing(mass, distance, num_rays=100):
-    if mass > 1e32:
-        st.error("Mass too large! Please enter a value less than 1e32 kg.")
-        return
-    if distance > 1e14:
-        st.error("Distance too large! Please enter a value less than 1e14 m.")
-        return
-
-    G = 6.67430e-11  # gravitational constant
-    c = 3e8  # speed of light
-    theta = np.linspace(-np.pi/2, np.pi/2, num_rays)
-    b = distance * np.tan(theta)
-    alpha = (4 * G * mass) / (b * c**2)
-
-    fig, ax = plt.subplots()
-    ax.plot(theta, alpha)
-    ax.set_xlabel('Angle (radians)')
-    ax.set_ylabel('Deflection Angle (radians)')
-    ax.set_title('Gravitational Lensing by a Black Hole')
-    st.pyplot(fig)
-
-# Quantum Fields
-def simulate_quantum_field(grid_size, time_steps):
-    if grid_size > 100:
-        st.error("Grid size too large! Please enter a value less than 100.")
-        return
-    if time_steps > 1000:
-        st.error("Time steps too large! Please enter a value less than 1000.")
-        return
-
-    psi = np.random.rand(grid_size, grid_size)
-    for _ in range(time_steps):
-        psi += np.random.normal(0, 0.1, (grid_size, grid_size))
-    fig, ax = plt.subplots()
-    cax = ax.imshow(psi, interpolation='nearest', cmap='viridis')
-    fig.colorbar(cax)
-    ax.set_title('Quantum Field Simulation')
-    st.pyplot(fig)
+st.set_page_config(page_title="OmniSolve 3.0: Universe Evolution", layout="wide")
 
 # Universe Evolution
 def simulate_universe_evolution(time_steps):
@@ -206,12 +13,41 @@ def simulate_universe_evolution(time_steps):
     # Using a simple power law model for scale factor evolution in a matter-dominated universe
     t = np.linspace(1, time_steps, time_steps)
     scale_factor = t**(2/3)  # Scale factor proportional to t^(2/3) in a matter-dominated universe
+    
     fig, ax = plt.subplots()
     ax.plot(t, scale_factor)
     ax.set_xlabel('Time Steps')
     ax.set_ylabel('Scale Factor')
-    ax.set_title('Evolution of the Universe')
+    ax.set_title('Evolution of the Universe (Matter-Dominated Era)')
     st.pyplot(fig)
+    
+    st.write("""
+    ### Understanding the Evolution of the Universe Simulation
+    #### Time Step Explanation
+    A time step in a simulation is a discrete interval of time over which the state of the system is updated. In cosmological simulations, time steps represent incremental units of cosmic time, allowing us to model the evolution of the universe over a given period.
+    
+    #### The Model and the Slight Bend
+    The model we used for the evolution of the universe in a matter-dominated era is based on the Friedmann equations. The scale factor \(a(t)\) describes how distances in the universe expand over time. For a matter-dominated universe, the scale factor \(a(t)\) follows a power-law relation:
+    
+    \[ a(t) \propto t^{2/3} \]
+    
+    This relation means that as cosmic time \(t\) increases, the scale factor grows as \(t^{2/3}\).
+    
+    #### Key Points About the Simulation:
+    - **Initial Conditions**: At early times (small \(t\)), the scale factor grows slowly because the universe is young and compact.
+    - **Later Times**: As time progresses, the scale factor increases more rapidly. However, because it's a \(t^{2/3}\) relationship, the growth rate isn't linear but rather follows a curve. This causes the slight bend or curve in the graph.
+    
+    #### The Slight Bend
+    The slight bend you observe in the graph of the universe's evolution over 1000 time steps is a manifestation of the \(t^{2/3}\) relationship. Here’s what it means:
+    - **Early Times**: Initially, the universe's expansion was slower.
+    - **Later Times**: As time progresses, the universe expands more quickly.
+    - **Non-linear Growth**: The curve represents non-linear growth typical of the matter-dominated era.
+    
+    ### What We Now Know:
+    - **Cosmic Expansion**: The universe expands, and the rate of expansion depends on the dominant form of energy or matter. In the matter-dominated era, the expansion follows the \(t^{2/3}\) rule.
+    - **Cosmological Models**: The simple power-law model helps us understand the large-scale structure of the universe. More detailed models may include other factors like dark energy, radiation, and more.
+    - **Simulation Limitations**: While the simple model gives a good approximation, more sophisticated models would involve solving the full Friedmann equations considering various components (dark matter, dark energy, radiation).
+    """)
 
 # Main app function
 def main():
@@ -287,7 +123,7 @@ def main():
 
     elif choice == "Universe Evolution":
         st.header("Universe Evolution")
-        st.write("Simulate the evolution of the universe over time.")
+        st.write("Simulate the evolution of the universe over time in a matter-dominated era.")
         time_steps = st.number_input("Enter number of time steps:", min_value=10, value=100, max_value=1000)
         if st.button("Run Simulation"):
             simulate_universe_evolution(time_steps)
